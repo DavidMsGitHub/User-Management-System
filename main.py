@@ -14,31 +14,31 @@ def connect_db():
     return conn
 
 
-class User():
-    def __init__(self):
-        self.conn = connect_db()
-        self.cursor = self.conn.cursor()
-    def create(self, username, email, password, gender):
-        self.cursor.execute("INSERT INTO users (username, email, password, gender) VALUES (?, ?, ?, ?)", (username,email,password,gender))
-        self.conn.commit()
-        self.conn.close()
-
-    def delete(self, id):
-        self.cursor.execute("DELETE FROM users WHERE id = ?",(id))
-        self.conn.commit()
-        self.conn.close()
-
-    def get_info(self, id):
-        self.cursor.execute("SELECT * FROM users WHERE id = ?", (id,))
-        user_data = self.cursor.fetchone()
-        column_names = [description[0] for description in self.cursor.description]
-        return dict(zip(column_names, user_data))
-
-    def search_name(self, name):
-        self.cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f"{name}%",))
-        users = self.cursor.fetchall()
-        columns = [description[0] for description in self.cursor.description]
-        return [dict(zip(columns, i)) for i in users]
+# class User():
+#     def __init__(self):
+#         self.conn = connect_db()
+#         self.cursor = self.conn.cursor()
+#     def create(self, username, email, password, gender):
+#         self.cursor.execute("INSERT INTO users (username, email, password, gender) VALUES (?, ?, ?, ?)", (username,email,password,gender))
+#         self.conn.commit()
+#         self.conn.close()
+#
+#     def delete(self, id):
+#         self.cursor.execute("DELETE FROM users WHERE id = ?",(id))
+#         self.conn.commit()
+#         self.conn.close()
+#
+#     def get_info(self, id):
+#         self.cursor.execute("SELECT * FROM users WHERE id = ?", (id,))
+#         user_data = self.cursor.fetchone()
+#         column_names = [description[0] for description in self.cursor.description]
+#         return dict(zip(column_names, user_data))
+#
+#     def search_name(self, name):
+#         self.cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f"{name}%",))
+#         users = self.cursor.fetchall()
+#         columns = [description[0] for description in self.cursor.description]
+#         return [dict(zip(columns, i)) for i in users]
 
 
 
@@ -62,14 +62,24 @@ def all_users():
 
 @app.route('/user/<id>')
 def check_user(id):
-    user = User()
-    return jsonify(user.get_info(id))
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = ?", (id,))
+    user_info = cursor.fetchone()
+    column_names = [description[0] for description in cursor.description]
+    user_data = dict(zip(column_names, user_info))
+    return jsonify(user_data)
 
 @app.route("/search", methods=["GET"])
 def search_by_name():
-    name = request.args.get("name")
-    user = User()
-    return jsonify(user.search_name(name))
+    name_to_find = request.args.get("name")
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f"%{name_to_find}%",))
+    users = cursor.fetchall()
+    columns = [description[0] for description in cursor.description]
+    conn.close()
+    return jsonify([dict(zip(columns, i)) for i in users])
 
 
 @app.route('/add_user', methods=["POST"])
@@ -78,18 +88,23 @@ def add_user():
     password = request.form["password"]
     email = request.form["email"]
     gender = request.form["gender"]
-
-    user = User()
-    user.create(username, password, email, gender)
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO users (username, email, password, gender) VALUES (?, ?, ?, ?)",
+                        (username, email, password, gender))
+    conn.commit()
+    conn.close()
     return jsonify({"Success": "Successfuly created new user"})
 
-@app.route('/remove-user', methods=["GET"])
+@app.route('/remove-user', methods=["GET", "DELETE"])
 def delete_user():
-    id = request.args.get("id")
-    user = User()
-    user.delete(id)
-    return jsonify({"Success":f"Successfuly removed user with id {id}"})
+    conn = connect_db()
+    cursor = conn.cursor()
+    id_to_remove = request.args.get("id")
+    cursor.execute("DELETE FROM users WHERE id = ?", (id_to_remove,))
+    conn.commit()
+    conn.close()
+    return jsonify({"Success":f"Successfuly removed user with id {id_to_remove}"})
 
 if __name__ == "__main__":
     app.run(debug=True)
-
