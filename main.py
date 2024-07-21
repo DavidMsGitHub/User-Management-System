@@ -34,6 +34,14 @@ class User():
         column_names = [description[0] for description in self.cursor.description]
         return dict(zip(column_names, user_data))
 
+    def search_name(self, name):
+        self.cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f"{name}%",))
+        users = self.cursor.fetchall()
+        columns = [description[0] for description in self.cursor.description]
+        return [dict(zip(columns, i)) for i in users]
+
+
+
 
 
 #--#__#_#_#__#_#_#___3-3-3-#_3-3-_#_#-g
@@ -57,6 +65,11 @@ def check_user(id):
     user = User()
     return jsonify(user.get_info(id))
 
+@app.route("/search", methods=["GET"])
+def search_by_name():
+    name = request.args.get("name")
+    user = User()
+    return jsonify(user.search_name(name))
 
 
 @app.route('/add_user', methods=["POST"])
