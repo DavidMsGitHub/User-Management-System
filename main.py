@@ -81,6 +81,37 @@ def search_by_name():
     conn.close()
     return jsonify([dict(zip(columns, i)) for i in users])
 
+@app.route("/filter", methods=["GET"])
+def filtered_search():
+    username = request.args.get("username")
+    password = request.args.get("password")
+    email = request.args.get("email")
+    gender = request.args.get("gender")
+
+    query = "SELECT * FROM users WHERE id > 0"
+    if gender:
+        query += f" AND gender = '{gender}'"
+
+    if username:
+        query += f" AND username = '{username}'"
+
+    if email:
+        query += f" AND email = '{email}'"
+
+    if password:
+        query += f" AND password = '{password}'"
+
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    columns = [description[0] for description in cursor.description]
+    data_list = [dict(zip(columns, i)) for i in results]
+    return jsonify({
+        f"Found {len(data_list)}": data_list
+    })
+
 
 @app.route('/add_user', methods=["POST"])
 def add_user():
